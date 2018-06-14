@@ -45,6 +45,16 @@ var defaults = $.fn.steps.defaults = {
     contentContainerTag: "div",
 
     /**
+     * The content class which is applied to the element that holds steps.
+     *
+     * @property contentClass
+     * @type String
+     * @default "content"
+     * @for defaults
+     **/
+    contentClass: "content",
+
+    /**
      * The action container tag which will be used to wrap the pagination navigation.
      *
      * @property actionContainerTag
@@ -53,6 +63,36 @@ var defaults = $.fn.steps.defaults = {
      * @for defaults
      **/
     actionContainerTag: "div",
+
+    /**
+     * The content class which is applied to the element that holds steps.
+     *
+     * @property contentClass
+     * @type String
+     * @default "content"
+     * @for defaults
+     **/
+    actionClass: "actions",
+
+    /**
+     * Should render the pagination (actions) container?
+     *
+     * @property renderPagination
+     * @type Boolean
+     * @default true
+     * @for defaults
+     **/
+    renderPagination: true,
+
+    /**
+     * Should render the steps container?
+     *
+     * @property renderSteps
+     * @type Boolean
+     * @default true
+     * @for defaults
+     **/
+    renderSteps: true,
 
     /**
      * The steps container tag which will be used to wrap the steps navigation.

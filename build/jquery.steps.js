@@ -1,6 +1,6 @@
 /*! 
- * jQuery Steps v1.1.0 - 09/04/2014
- * Copyright (c) 2014 Rafael Staib (http://www.jquery-steps.com)
+ * jQuery Steps v1.1.0 - 06/05/2018
+ * Copyright (c) 2018 Rafael Staib (http://www.jquery-steps.com)
  * Licensed under MIT http://www.opensource.org/licenses/MIT
  */
 ;(function ($, undefined)
@@ -232,13 +232,13 @@ function destroy(wizard, options)
 
     // Remove virtual data objects from the wizard
     wizard.unbind(eventNamespace).removeData("uid").removeData("options")
-        .removeData("state").removeData("steps").removeData("eventNamespace")
-        .find(".actions a").unbind(eventNamespace);
+        .removeData("state").removeData("steps").removeData("eventNamespace").unbind(eventNamespace);
+    getPagination(wizard).find("a").unbind(eventNamespace);
 
     // Remove attributes and CSS classes from the wizard
     wizard.removeClass(options.clearFixCssClass + " vertical");
 
-    var contents = wizard.find(".content > *");
+    var contents = getContent(wizard).children("*");
 
     // Remove virtual data objects from panels and their titles
     contents.removeData("loaded").removeData("mode").removeData("url");
@@ -249,7 +249,7 @@ function destroy(wizard, options)
         ._removeAria("hidden");
 
     // Empty panels if the mode is set to 'async' or 'iframe'
-    wizard.find(".content > [data-mode='async'],.content > [data-mode='iframe']").empty();
+    getContent(wizard).children("[data-mode='async'], [data-mode='iframe']").empty();
 
     var wizardSubstitute = $("<{0} class=\"{1}\"></{0}>".format(wizard.get(0).tagName, wizard.attr("class")));
 
@@ -259,7 +259,7 @@ function destroy(wizard, options)
         wizardSubstitute._id(wizardId);
     }
 
-    wizardSubstitute.html(wizard.find(".content").html());
+    wizardSubstitute.html(getContent(wizard).html());
     wizard.after(wizardSubstitute);
     wizard.remove();
 
@@ -346,6 +346,16 @@ function getState(wizard)
 function getSteps(wizard)
 {
     return wizard.data("steps");
+}
+
+function getContent(wizard)
+{
+    return wizard.data("_content");
+}
+
+function getPagination(wizard)
+{
+    return wizard.data("_pagination");
 }
 
 /**
@@ -555,6 +565,7 @@ function initialize(options)
         wizard.data("options", opts);
         wizard.data("state", state);
         wizard.data("steps", []);
+        wizard.data("_content", null);
 
         analyzeData(wizard, opts, state);
         render(wizard, opts, state);
@@ -609,7 +620,7 @@ function insertStep(wizard, options, state, index, step)
     }
     state.stepCount++;
 
-    var contentContainer = wizard.find(".content"),
+    var contentContainer = getContent(wizard),
         header = $("<{0}>{1}</{0}>".format(options.headerTag, step.title)),
         body = $("<{0}></{0}>".format(options.bodyTag));
 
@@ -709,7 +720,7 @@ function loadAsyncContent(wizard, options, state)
             switch (getValidEnumValue(contentMode, currentStep.contentMode))
             {
                 case contentMode.iframe:
-                    wizard.find(".content > .body").eq(state.currentIndex).empty()
+                    getContent(wizard).children(".body").eq(state.currentIndex).empty()
                         .html("<iframe src=\"" + currentStep.contentUrl + "\" frameborder=\"0\" scrolling=\"no\" />")
                         .data("loaded", "1");
                     break;
@@ -821,12 +832,12 @@ function refreshPagination(wizard, options, state)
 {
     if (options.enablePagination)
     {
-        var finish = wizard.find(".actions a[href$='#finish']").parent(),
-            next = wizard.find(".actions a[href$='#next']").parent();
+        var finish = getPagination(wizard).find("a[href$='#finish']").parent(),
+            next = getPagination(wizard).find("a[href$='#next']").parent();
 
         if (!options.forceMoveForward)
         {
-            var previous = wizard.find(".actions a[href$='#previous']").parent();
+            var previous = getPagination(wizard).find("a[href$='#previous']").parent();
             previous._enableAria(state.currentIndex > 0);
         }
 
@@ -859,7 +870,7 @@ function refreshStepNavigation(wizard, options, state, oldIndex)
 {
     var currentOrNewStepAnchor = getStepAnchor(wizard, state.currentIndex),
         currentInfo = $("<span class=\"current-info audible\">" + options.labels.current + " </span>"),
-        stepTitles = wizard.find(".content > .title");
+        stepTitles = getContent(wizard).children(".title");
 
     if (oldIndex != null)
     {
@@ -921,7 +932,7 @@ function registerEvents(wizard, options)
         wizard.bind("keyup" + eventNamespace, keyUpHandler);
     }
 
-    wizard.find(".actions a").bind("click" + eventNamespace, paginationClickHandler);
+    getPagination(wizard).find("a").bind("click" + eventNamespace, paginationClickHandler);
 }
 
 /**
@@ -994,15 +1005,25 @@ function render(wizard, options, state)
 {
     // Create a content wrapper and copy HTML from the intial wizard structure
     var wrapperTemplate = "<{0} class=\"{1}\">{2}</{0}>",
+        contentClass = (options.containerClass && options.containerClass !== false) ? options.containerClass + ' ' : '' + options.clearFixCssClass,
         orientation = getValidEnumValue(stepsOrientation, options.stepsOrientation),
         verticalCssClass = (orientation === stepsOrientation.vertical) ? " vertical" : "",
-        contentWrapper = $(wrapperTemplate.format(options.contentContainerTag, "content " + options.clearFixCssClass, wizard.html())),
+        contentWrapper = $(wrapperTemplate.format(options.contentContainerTag, contentClass, wizard.html())),
         stepsWrapper = $(wrapperTemplate.format(options.stepsContainerTag, "steps " + options.clearFixCssClass, "<ul role=\"tablist\"></ul>")),
         stepTitles = contentWrapper.children(options.headerTag),
         stepContents = contentWrapper.children(options.bodyTag);
 
+    wizard.data("_content", contentWrapper);
+
     // Transform the wizard wrapper and remove the inner HTML
-    wizard.attr("role", "application").empty().append(stepsWrapper).append(contentWrapper)
+    wizard.attr("role", "application").empty();
+
+    wizard.append(stepsWrapper);
+    if (!options.renderSteps) {
+        stepsWrapper.hide();
+    }
+
+    wizard.append(contentWrapper)
         .addClass(options.cssClass + " " + options.clearFixCssClass + verticalCssClass);
 
     // Add WIA-ARIA support
@@ -1054,7 +1075,7 @@ function renderPagination(wizard, options, state)
 {
     if (options.enablePagination)
     {
-        var pagination = "<{0} class=\"actions {1}\"><ul role=\"menu\" aria-label=\"{2}\">{3}</ul></{0}>",
+        var pagination = "<{0} class=\"" + (options.actionClass ? options.actionClass : '') + " {1}\"><ul role=\"menu\" aria-label=\"{2}\">{3}</ul></{0}>",
             buttonTemplate = "<li><a href=\"#{0}\" role=\"menuitem\">{1}</a></li>",
             buttons = "";
 
@@ -1075,8 +1096,13 @@ function renderPagination(wizard, options, state)
             buttons += buttonTemplate.format("cancel", options.labels.cancel);
         }
 
-        wizard.append(pagination.format(options.actionContainerTag, options.clearFixCssClass,
+        var $pagination = $(pagination.format(options.actionContainerTag, options.clearFixCssClass,
             options.labels.pagination, buttons));
+
+        wizard.data('_pagination', $pagination);
+        if (options.renderPagination) {
+            wizard.append($pagination);
+        }
 
         refreshPagination(wizard, options, state);
         loadAsyncContent(wizard, options, state);
@@ -1193,7 +1219,7 @@ function saveCurrentStateToCookie(wizard, options, state)
 
 function startTransitionEffect(wizard, options, state, index, oldIndex, doneCallback)
 {
-    var stepContents = wizard.find(".content > .body"),
+    var stepContents = getContent(wizard).children(".body"),
         effect = getValidEnumValue(transitionEffect, options.transitionEffect),
         effectSpeed = options.transitionEffectSpeed,
         newStep = stepContents.eq(index),
@@ -1643,6 +1669,16 @@ var defaults = $.fn.steps.defaults = {
     contentContainerTag: "div",
 
     /**
+     * The content class which is applied to the element that holds steps.
+     *
+     * @property contentClass
+     * @type String
+     * @default "content"
+     * @for defaults
+     **/
+    contentClass: "content",
+
+    /**
      * The action container tag which will be used to wrap the pagination navigation.
      *
      * @property actionContainerTag
@@ -1651,6 +1687,36 @@ var defaults = $.fn.steps.defaults = {
      * @for defaults
      **/
     actionContainerTag: "div",
+
+    /**
+     * The content class which is applied to the element that holds steps.
+     *
+     * @property contentClass
+     * @type String
+     * @default "content"
+     * @for defaults
+     **/
+    actionClass: "actions",
+
+    /**
+     * Should render the pagination (actions) container?
+     *
+     * @property renderPagination
+     * @type Boolean
+     * @default true
+     * @for defaults
+     **/
+    renderPagination: true,
+
+    /**
+     * Should render the steps container?
+     *
+     * @property renderSteps
+     * @type Boolean
+     * @default true
+     * @for defaults
+     **/
+    renderSteps: true,
 
     /**
      * The steps container tag which will be used to wrap the steps navigation.
